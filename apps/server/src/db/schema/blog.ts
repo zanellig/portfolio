@@ -68,12 +68,12 @@ export const posts = mysqlTable("posts", {
   slug: varchar({ length: 140 }).notNull().unique(),
   body: text().notNull(),
 
-  isCommentable: boolean().default(true),
-  isFeatured: boolean().default(false),
+  isCommentable: boolean("is_commentable").default(true),
+  isFeatured: boolean("is_featured").default(false),
 
-  viewCount: int({ unsigned: true }).default(0),
-  likeCount: int({ unsigned: true }).default(0),
-  commentCount: int({ unsigned: true }).default(0),
+  viewCount: int("view_count", { unsigned: true }).default(0),
+  likeCount: int("like_count", { unsigned: true }).default(0),
+  commentCount: int("comment_count", { unsigned: true }).default(0),
 
   meta: json().$type<{
     canonical?: string;
