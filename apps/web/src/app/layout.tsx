@@ -33,7 +33,9 @@ export default function RootLayout({
         <Providers>
           <div className="grid grid-rows-[auto_1fr] h-dvh">
             <Header />
-            {children}
+            <main className="container items-start mx-auto max-w-3xl py-8 space-y-6 flex flex-col gap-4">
+              {children}
+            </main>
           </div>
         </Providers>
       </body>
