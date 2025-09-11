@@ -10,7 +10,7 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 import { v4 } from "uuid";
-import { images } from "./blog";
+import { images } from "@/db/schema/blog";
 
 export const projects = mysqlTable("projects", {
   id: id("id").primaryKey().$defaultFn(v4),

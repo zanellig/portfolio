@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from "@trpc/server";
-import type { Context } from "./context";
-import { auth } from "./auth";
+import type { Context } from "@/lib/context";
+import { auth } from "@/lib/auth";
 
 export const t = initTRPC.context<Context>().create();
 
