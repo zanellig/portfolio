@@ -17,6 +17,10 @@ export const user = mysqlTable("user", {
     .defaultNow()
     .$onUpdate(() => /* @__PURE__ */ new Date())
     .notNull(),
+  role: text("role"),
+  banned: boolean("banned").default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamp("ban_expires"),
 });
 
 export const session = mysqlTable("session", {
@@ -32,6 +36,7 @@ export const session = mysqlTable("session", {
   userId: varchar("user_id", { length: 36 })
     .notNull()
     .references(() => user.id, { onDelete: "cascade" }),
+  impersonatedBy: text("impersonated_by"),
 });
 
 export const account = mysqlTable("account", {
