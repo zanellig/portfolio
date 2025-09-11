@@ -8,8 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
-    "@radix-ui/react-dialog": "1.1.15",
-    "@radix-ui/react-tabs": "1.1.13",
+    "@radix-ui/react-dialog": "catalog:",
+    "@radix-ui/react-tabs": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
     "@trpc/client": "catalog:",
@@ -36,6 +36,6 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "5"
+    "typescript": "catalog:"
   }
 }
