@@ -11,7 +11,17 @@ export const auth = betterAuth({
   }),
   trustedOrigins: [process.env.CORS_ORIGIN || ""],
   emailAndPassword: {
+    disableSignUp: true,
     enabled: true,
+  },
+  rateLimit: {
+    enabled: true,
+    customRules: {
+      "/sign-in/email": {
+        window: 10,
+        max: 3,
+      },
+    },
   },
   plugins: [jwt()],
   advanced: {
