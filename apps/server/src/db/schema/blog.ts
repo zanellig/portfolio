@@ -1,4 +1,4 @@
-import { defaultTimestamps } from "@/lib/db-constants";
+import { defaultTimestamps, id } from "@/lib/db-constants";
 import {
   boolean,
   int,
@@ -9,8 +9,6 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 import { v4 } from "uuid";
-
-const id = (name: string) => varchar(name, { length: 36 });
 
 export const images = mysqlTable("images", {
   id: id("id").primaryKey().$defaultFn(v4),
