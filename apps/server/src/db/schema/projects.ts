@@ -24,13 +24,13 @@ export const projects = mysqlTable("projects", {
   status: mysqlEnum(["published", "hidden"]).default("hidden").notNull(),
 
   url: text(),
-  repositoryUrl: text(),
+  repositoryUrl: text("repository_url"),
   technologies: json(),
   category: varchar({ length: 64 }),
   featured: boolean().default(false),
   order: int({ unsigned: true }),
 
-  startDate: timestamp(),
-  endDate: timestamp(),
+  startDate: timestamp("start_date"),
+  endDate: timestamp("end_date"),
   ...defaultTimestamps,
 });
