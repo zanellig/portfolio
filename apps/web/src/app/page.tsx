@@ -1,7 +1,17 @@
 "use client";
-import { useQuery } from "@tanstack/react-query";
-import { trpc } from "@/utils/trpc";
+import Window from "@/components/window";
 
 export default function Home() {
-  return <div className="container mx-auto max-w-3xl px-4 py-2"></div>;
+  return (
+    <div className="relative w-dvw h-dvh select-none overflow-hidden">
+      <Window>
+        <div className="flex p-4">
+          Window with children that overflow outside the container, to see how
+          it behaves
+        </div>
+      </Window>
+      <Window />
+      <Window />
+    </div>
+  );
 }

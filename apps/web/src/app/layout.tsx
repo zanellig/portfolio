@@ -3,6 +3,7 @@ import { Fira_Mono, Geist, Geist_Mono, Inter } from "next/font/google";
 import "../index.css";
 import Providers from "@/components/providers";
 import Header from "@/components/header";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const interSans = Inter({
   variable: "--font-inter-sans",
@@ -31,12 +32,15 @@ export default function RootLayout({
         className={`${interSans.variable} ${firaMono.variable} antialiased`}
       >
         <Providers>
-          <div className="grid grid-rows-[auto_1fr] h-dvh">
+          {/* <div className="grid grid-rows-[auto_1fr] h-dvh">
             <Header />
-            <main className="container items-start mx-auto max-w-3xl py-8 space-y-6 flex flex-col gap-4">
-              {children}
-            </main>
-          </div>
+            <ScrollArea className="overflow-hidden">
+              <main className="container items-start mx-auto max-w-3xl py-8 space-y-6 flex flex-col gap-4">
+                {children}
+              </main>
+            </ScrollArea>
+          </div> */}
+          {children}
         </Providers>
       </body>
     </html>
