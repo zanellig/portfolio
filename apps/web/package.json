@@ -3,12 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack --port=3001",
+    "dev": "next dev --turbopack --port=3001 -H 0.0.0.0",
     "build": "next build",
     "start": "next start"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "catalog:",
+    "@radix-ui/react-scroll-area": "1.2.10",
     "@radix-ui/react-tabs": "catalog:",
     "@tanstack/react-form": "catalog:",
     "@tanstack/react-query": "catalog:",
@@ -19,6 +20,7 @@
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",
+    "motion": "^12.23.18",
     "next": "catalog:",
     "next-themes": "catalog:",
     "radix-ui": "catalog:",
