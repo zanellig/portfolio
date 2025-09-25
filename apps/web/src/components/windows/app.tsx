@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { useWindowManager } from "./window-manager";
 import Window from "./window";
+import type { Coordinates } from "./types";
 
 interface AppProps {
   id: string;
@@ -13,8 +14,7 @@ interface AppProps {
   windowContent: React.ReactNode;
   windowWidth?: number;
   windowHeight?: number;
-  x?: number;
-  y?: number;
+  windowTargetCoordinates?: Coordinates;
 }
 
 export function App({
@@ -25,12 +25,25 @@ export function App({
   windowContent,
   windowWidth = 600,
   windowHeight = 500,
-  x,
-  y,
+  windowTargetCoordinates,
 }: AppProps) {
   const [isWindowOpen, setIsWindowOpen] = useState(false);
   const [clickTimeout, setClickTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [spawnCoordinates, setSpawnCoordinates] = useState<
+    Coordinates | undefined
+  >(undefined);
+  const appIconRef = useRef<HTMLDivElement>(null);
   const windowManager = useWindowManager();
+
+  const calculateIconCenterCoordinates = useCallback(() => {
+    if (!appIconRef.current) return undefined;
+
+    const rect = appIconRef.current.getBoundingClientRect();
+    return {
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    } as Coordinates;
+  }, []);
 
   const handleClick = () => {
     if (clickTimeout) {
@@ -47,7 +60,11 @@ export function App({
 
   const handleDoubleClick = () => {
     if (!isWindowOpen) {
-      setIsWindowOpen(true);
+      const coordinates = calculateIconCenterCoordinates();
+      if (coordinates) {
+        setSpawnCoordinates(coordinates);
+        setIsWindowOpen(true);
+      }
     } else {
       windowManager.focusWindow(id);
     }
@@ -60,6 +77,7 @@ export function App({
   return (
     <>
       <div
+        ref={appIconRef}
         className={cn(
           "flex flex-col items-center justify-center w-20 h-20 p-2 rounded-lg cursor-pointer",
           "hover:bg-accent/50 transition-colors duration-200",
@@ -73,17 +91,18 @@ export function App({
         </div>
       </div>
 
-      {isWindowOpen && (
+      {isWindowOpen && spawnCoordinates && (
         <Window
           id={id}
           title={windowTitle || label}
           width={windowWidth}
           height={windowHeight}
-          x={x}
-          y={y}
+          spawnCoordinates={spawnCoordinates}
+          x={windowTargetCoordinates?.x}
+          y={windowTargetCoordinates?.y}
           onClose={handleWindowClose}
         >
-          <div className="p-4">{windowContent}</div>
+          {windowContent}
         </Window>
       )}
     </>

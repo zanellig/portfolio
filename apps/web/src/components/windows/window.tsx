@@ -1,9 +1,14 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import React, { useEffect, useState, useId, useRef } from "react";
+import React, { useEffect, useState, useId, useRef, useMemo } from "react";
 import { useWindowManager } from "./window-manager";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type {
+  Coordinates,
+  Dimensions,
+  ThreeDimensionalCoordinates,
+} from "./types";
 
 type ResizeDir =
   | "none"
@@ -16,22 +21,9 @@ type ResizeDir =
   | "bottom-left"
   | "bottom-right";
 
-interface Dimensions {
-  width: number;
-  height: number;
-}
-
-interface Coordinates {
-  x: number;
-  y: number;
-}
-
-interface ThreeDimensionalCoordinates extends Coordinates {
-  z: number;
-}
-
 interface WindowProps
   extends Partial<Dimensions & ThreeDimensionalCoordinates> {
+  spawnCoordinates?: Coordinates;
   children?: React.ReactNode;
   title?: string;
   id?: string;
@@ -53,6 +45,24 @@ const INITIAL_DIMENSIONS = {
  */
 const DEFAULT_ASPECT_RATIO =
   INITIAL_DIMENSIONS.width / INITIAL_DIMENSIONS.height;
+
+/**
+ * Calculate the center coordinates of the viewport
+ */
+function getScreenCenter(): Coordinates {
+  if (typeof window === "undefined") {
+    // Fallback for SSR - use reasonable default center
+    return { x: 400, y: 300 };
+  }
+
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+
+  return {
+    x: Math.floor(viewportWidth / 2),
+    y: Math.floor(viewportHeight / 2),
+  };
+}
 
 function calculateDimensionsFromAR({ width, height }: WindowProps): Dimensions {
   if (width) {
@@ -76,6 +86,7 @@ export default function Window({
   x,
   y,
   z,
+  spawnCoordinates,
   children,
   title,
   id: providedId,
@@ -84,25 +95,41 @@ export default function Window({
   const generatedId = useId();
   const windowId = providedId || generatedId;
   const windowManager = useWindowManager();
-  const [position, setPosition] = useState<Coordinates>({
-    x: x ?? 100,
-    y: y ?? 100,
-  });
+  const screenCenter = useMemo(() => getScreenCenter(), []);
+  const [position, setPosition] = useState<Coordinates>(
+    spawnCoordinates ?? screenCenter
+  );
   const [dimensions, setDimensions] = useState(
     calculateDimensionsFromAR({ width, height })
   );
+  const targetCoordinates = useMemo(() => {
+    return {
+      x: x ?? screenCenter.x - dimensions.width / 2,
+      y: y ?? screenCenter.y - dimensions.height / 2,
+    };
+  }, [x, y, screenCenter, dimensions]);
   const [offset, setOffset] = useState<Coordinates>({ x: 0, y: 0 });
   const [dragging, setDragging] = useState<boolean>(false);
   const [resizing, setResizing] = useState<ResizeDir>("none");
+  const [isSpawning, setIsSpawning] = useState<boolean>(true);
+
+  console.group("Window rendered");
+  console.log("Position:", position);
+  console.log("Spawn Coordinates:", spawnCoordinates);
+  console.log("Target Coordinates:", targetCoordinates);
+  console.log("Dimensions:", dimensions);
+  console.log("ID:", windowId);
+  console.log("Title:", title);
+  console.groupEnd();
 
   const positionRef = useRef(position);
   const dimensionsRef = useRef(dimensions);
+  const animationRef = useRef<number>(undefined);
 
-
+  // Keep refs up to date
   useEffect(() => {
     positionRef.current = position;
   }, [position]);
-
   useEffect(() => {
     dimensionsRef.current = dimensions;
   }, [dimensions]);
@@ -119,6 +146,59 @@ export default function Window({
       windowManager.unregisterWindow(windowId);
     };
   }, [windowId, title, onClose]);
+
+  // Trigger scale-in animation and position transition on mount
+  useEffect(() => {
+    const spawnTimeout = setTimeout(() => {
+      setIsSpawning(false);
+
+      // Start logarithmic ease-in animation after spawn animation
+      if (spawnCoordinates) {
+        const startPosition = spawnCoordinates;
+        const endPosition = targetCoordinates;
+        const startTime = performance.now();
+        const duration = 300; // 300ms animation
+
+        const animate = (currentTime: number) => {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+
+          // Logarithmic ease-in function
+          const easeInLog = progress === 0 ? 0 : Math.log10(1 + 9 * progress);
+
+          const currentX =
+            startPosition.x + (endPosition.x - startPosition.x) * easeInLog;
+          const currentY =
+            startPosition.y + (endPosition.y - startPosition.y) * easeInLog;
+
+          setPosition({ x: currentX, y: currentY });
+
+          if (progress < 1) {
+            animationRef.current = requestAnimationFrame(animate);
+          }
+        };
+
+        // Start animation after spawn delay
+        const animationTimeout = setTimeout(() => {
+          animationRef.current = requestAnimationFrame(animate);
+        }, 0);
+
+        return () => {
+          clearTimeout(animationTimeout);
+          if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+          }
+        };
+      }
+    }, 50); // Small delay to ensure initial render with scale(0)
+
+    return () => {
+      clearTimeout(spawnTimeout);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isSpawning, spawnCoordinates]);
 
   useEffect(() => {
     function handleMouseMove(e: MouseEvent) {
@@ -140,67 +220,102 @@ export default function Window({
         setPosition({ x: newX, y: newY });
         return;
       }
+
       if (resizing !== "none") {
         const minW = MINIMUM_DIMENSIONS.width;
         const minH = MINIMUM_DIMENSIONS.height;
         const mouseX = e.clientX;
         const mouseY = e.clientY;
 
-        setDimensions((prev) => {
-          let { width, height } = prev;
-          let { x, y } = positionRef.current;
+        const currentPos = positionRef.current;
+        const currentDim = dimensionsRef.current;
 
-          switch (resizing) {
-            case "top": {
-              const newY = Math.max(0, Math.min(mouseY, y + height - minH));
-              height = Math.max(minH, height + (y - newY));
-              y = newY;
-              break;
-            }
-            case "right":
-              width = Math.max(minW, Math.min(mouseX - x, parentW - x));
-              break;
-            case "bottom":
-              height = Math.max(minH, Math.min(mouseY - y, parentH - y));
-              break;
-            case "left": {
-              const newX = Math.max(0, Math.min(mouseX, x + width - minW));
-              width = Math.max(minW, width + (x - newX));
-              x = newX;
-              break;
-            }
-            case "bottom-right":
-              width = Math.max(minW, Math.min(mouseX - x, parentW - x));
-              height = Math.max(minH, Math.min(mouseY - y, parentH - y));
-              break;
-            case "bottom-left": {
-              const newX = Math.max(0, Math.min(mouseX, x + width - minW));
-              width = Math.max(minW, width + (x - newX));
-              x = newX;
-              height = Math.max(minH, Math.min(mouseY - y, parentH - y));
-              break;
-            }
-            case "top-right": {
-              const newY = Math.max(0, Math.min(mouseY, y + height - minH));
-              height = Math.max(minH, height + (y - newY));
-              y = newY;
-              width = Math.max(minW, Math.min(mouseX - x, parentW - x));
-              break;
-            }
-            case "top-left": {
-              const newX = Math.max(0, Math.min(mouseX, x + width - minW));
-              const newY = Math.max(0, Math.min(mouseY, y + height - minH));
-              width = Math.max(minW, width + (x - newX));
-              height = Math.max(minH, height + (y - newY));
-              x = newX;
-              y = newY;
-              break;
-            }
+        // Initialize new geometry with current values
+        let newWidth = currentDim.width;
+        let newHeight = currentDim.height;
+        let newX = currentPos.x;
+        let newY = currentPos.y;
+
+        // Calculate the anchor points for the right and bottom edges
+        const rightAnchor = currentPos.x + currentDim.width;
+        const bottomAnchor = currentPos.y + currentDim.height;
+
+        switch (resizing) {
+          case "top": {
+            newHeight = Math.max(minH, bottomAnchor - mouseY);
+            newY = bottomAnchor - newHeight;
+            // Clamp position and recalculate dimension to keep anchor fixed
+            newY = Math.max(0, newY);
+            newHeight = bottomAnchor - newY;
+            break;
           }
+          case "right": {
+            newWidth = Math.max(minW, mouseX - newX);
+            // Clamp to parent boundary
+            newWidth = Math.min(newWidth, parentW - newX);
+            break;
+          }
+          case "bottom": {
+            newHeight = Math.max(minH, mouseY - newY);
+            // Clamp to parent boundary
+            newHeight = Math.min(newHeight, parentH - newY);
+            break;
+          }
+          case "left": {
+            newWidth = Math.max(minW, rightAnchor - mouseX);
+            newX = rightAnchor - newWidth;
+            // Clamp position and recalculate dimension to keep anchor fixed
+            newX = Math.max(0, newX);
+            newWidth = rightAnchor - newX;
+            break;
+          }
+          case "bottom-right": {
+            newWidth = Math.max(minW, mouseX - newX);
+            newWidth = Math.min(newWidth, parentW - newX);
+            newHeight = Math.max(minH, mouseY - newY);
+            newHeight = Math.min(newHeight, parentH - newY);
+            break;
+          }
+          case "bottom-left": {
+            // Handle left (anchored)
+            newWidth = Math.max(minW, rightAnchor - mouseX);
+            newX = rightAnchor - newWidth;
+            newX = Math.max(0, newX);
+            newWidth = rightAnchor - newX;
+            // Handle bottom (normal)
+            newHeight = Math.max(minH, mouseY - newY);
+            newHeight = Math.min(newHeight, parentH - newY);
+            break;
+          }
+          case "top-right": {
+            // Handle top (anchored)
+            newHeight = Math.max(minH, bottomAnchor - mouseY);
+            newY = bottomAnchor - newHeight;
+            newY = Math.max(0, newY);
+            newHeight = bottomAnchor - newY;
+            // Handle right (normal)
+            newWidth = Math.max(minW, mouseX - newX);
+            newWidth = Math.min(newWidth, parentW - newX);
+            break;
+          }
+          case "top-left": {
+            // Handle left (anchored)
+            newWidth = Math.max(minW, rightAnchor - mouseX);
+            newX = rightAnchor - newWidth;
+            newX = Math.max(0, newX);
+            newWidth = rightAnchor - newX;
+            // Handle top (anchored)
+            newHeight = Math.max(minH, bottomAnchor - mouseY);
+            newY = bottomAnchor - newHeight;
+            newY = Math.max(0, newY);
+            newHeight = bottomAnchor - newY;
+            break;
+          }
+        }
 
-          setPosition({ x, y });
-          return { width, height };
-        });
+        // Apply the new geometry
+        setPosition({ x: newX, y: newY });
+        setDimensions({ width: newWidth, height: newHeight });
       }
     }
 
@@ -225,9 +340,10 @@ export default function Window({
   return (
     <div
       className={cn(
-        "absolute shadow-2xl",
+        "absolute shadow-2xl transition-transform duration-300 ease-in-out",
         isFocused ? "drop-shadow-2xl" : null,
-        isMaximized ? "!top-0 !left-0 !w-full !h-full" : null
+        isMaximized ? "!top-0 !left-0 !w-full !h-full" : null,
+        isSpawning ? "scale-50" : "scale-100"
       )}
       style={
         isMaximized

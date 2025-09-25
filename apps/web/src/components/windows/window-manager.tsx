@@ -1,7 +1,14 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from "react";
-import { Taskbar } from "./taskbar";
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useRef,
+  useMemo,
+} from "react";
+import { Taskbar } from "../taskbar";
 
 export interface WindowInfo {
   id: string;
@@ -28,12 +35,16 @@ interface WindowManagerContextType {
   isWindowMaximized: (id: string) => boolean;
 }
 
-const WindowManagerContext = createContext<WindowManagerContextType | null>(null);
+const WindowManagerContext = createContext<WindowManagerContextType | null>(
+  null
+);
 
 export function useWindowManager() {
   const context = useContext(WindowManagerContext);
   if (!context) {
-    throw new Error("useWindowManager must be used within a WindowManagerProvider");
+    throw new Error(
+      "useWindowManager must be used within a WindowManagerProvider"
+    );
   }
   return context;
 }
@@ -45,33 +56,43 @@ interface WindowManagerProviderProps {
 
 export function WindowManagerProvider({
   children,
-  baseZIndex = 1000
+  baseZIndex = 1000,
 }: WindowManagerProviderProps) {
   const [windows, setWindows] = useState<Map<string, WindowInfo>>(new Map());
   const [focusedWindowId, setFocusedWindowId] = useState<string | null>(null);
   const nextZIndexRef = useRef(baseZIndex);
 
-  const registerWindow = useCallback((id: string, title?: string, onClose?: () => void): number => {
-    const zIndex = nextZIndexRef.current++;
+  const registerWindow = useCallback(
+    (id: string, title?: string, onClose?: () => void): number => {
+      const zIndex = nextZIndexRef.current++;
 
-    setWindows(prev => {
-      const newWindows = new Map(prev);
-      newWindows.set(id, { id, zIndex, title, minimized: false, maximized: false, onClose });
-      return newWindows;
-    });
+      setWindows((prev) => {
+        const newWindows = new Map(prev);
+        newWindows.set(id, {
+          id,
+          zIndex,
+          title,
+          minimized: false,
+          maximized: false,
+          onClose,
+        });
+        return newWindows;
+      });
 
-    setFocusedWindowId(id);
-    return zIndex;
-  }, []);
+      setFocusedWindowId(id);
+      return zIndex;
+    },
+    []
+  );
 
   const unregisterWindow = useCallback((id: string) => {
-    setWindows(prev => {
+    setWindows((prev) => {
       const newWindows = new Map(prev);
       newWindows.delete(id);
       return newWindows;
     });
 
-    setFocusedWindowId(prev => {
+    setFocusedWindowId((prev) => {
       if (prev === id) {
         return null;
       }
@@ -79,16 +100,19 @@ export function WindowManagerProvider({
     });
   }, []);
 
-  const closeWindow = useCallback((id: string) => {
-    const window = windows.get(id);
-    if (window?.onClose) {
-      window.onClose();
-    }
-    unregisterWindow(id);
-  }, [unregisterWindow, windows]);
+  const closeWindow = useCallback(
+    (id: string) => {
+      const window = windows.get(id);
+      if (window?.onClose) {
+        window.onClose();
+      }
+      unregisterWindow(id);
+    },
+    [unregisterWindow, windows]
+  );
 
   const minimizeWindow = useCallback((id: string) => {
-    setWindows(prev => {
+    setWindows((prev) => {
       if (!prev.has(id)) return prev;
 
       const currentWindow = prev.get(id)!;
@@ -97,7 +121,7 @@ export function WindowManagerProvider({
       return newWindows;
     });
 
-    setFocusedWindowId(prev => {
+    setFocusedWindowId((prev) => {
       if (prev === id) {
         return null;
       }
@@ -106,13 +130,18 @@ export function WindowManagerProvider({
   }, []);
 
   const restoreWindow = useCallback((id: string) => {
-    setWindows(prev => {
+    setWindows((prev) => {
       if (!prev.has(id)) return prev;
 
       const currentWindow = prev.get(id)!;
       const newZIndex = nextZIndexRef.current++;
       const newWindows = new Map(prev);
-      newWindows.set(id, { ...currentWindow, minimized: false, maximized: false, zIndex: newZIndex });
+      newWindows.set(id, {
+        ...currentWindow,
+        minimized: false,
+        maximized: false,
+        zIndex: newZIndex,
+      });
       return newWindows;
     });
 
@@ -120,13 +149,18 @@ export function WindowManagerProvider({
   }, []);
 
   const maximizeWindow = useCallback((id: string) => {
-    setWindows(prev => {
+    setWindows((prev) => {
       if (!prev.has(id)) return prev;
 
       const currentWindow = prev.get(id)!;
       const newZIndex = nextZIndexRef.current++;
       const newWindows = new Map(prev);
-      newWindows.set(id, { ...currentWindow, maximized: !currentWindow.maximized, minimized: false, zIndex: newZIndex });
+      newWindows.set(id, {
+        ...currentWindow,
+        maximized: !currentWindow.maximized,
+        minimized: false,
+        zIndex: newZIndex,
+      });
       return newWindows;
     });
 
@@ -134,7 +168,7 @@ export function WindowManagerProvider({
   }, []);
 
   const focusWindow = useCallback((id: string) => {
-    setWindows(prev => {
+    setWindows((prev) => {
       if (!prev.has(id)) return prev;
 
       const currentWindow = prev.get(id)!;
@@ -147,41 +181,69 @@ export function WindowManagerProvider({
     setFocusedWindowId(id);
   }, []);
 
-  const getWindowZIndex = useCallback((id: string): number => {
-    const window = windows.get(id);
-    return window?.zIndex || baseZIndex;
-  }, [windows, baseZIndex]);
+  const getWindowZIndex = useCallback(
+    (id: string): number => {
+      const window = windows.get(id);
+      return window?.zIndex || baseZIndex;
+    },
+    [windows, baseZIndex]
+  );
 
-  const isWindowFocused = useCallback((id: string): boolean => {
-    return focusedWindowId === id;
-  }, [focusedWindowId]);
+  const isWindowFocused = useCallback(
+    (id: string): boolean => {
+      return focusedWindowId === id;
+    },
+    [focusedWindowId]
+  );
 
-  const isWindowMinimized = useCallback((id: string): boolean => {
-    const window = windows.get(id);
-    return window?.minimized || false;
-  }, [windows]);
+  const isWindowMinimized = useCallback(
+    (id: string): boolean => {
+      const window = windows.get(id);
+      return window?.minimized || false;
+    },
+    [windows]
+  );
 
-  const isWindowMaximized = useCallback((id: string): boolean => {
-    const window = windows.get(id);
-    return window?.maximized || false;
-  }, [windows]);
+  const isWindowMaximized = useCallback(
+    (id: string): boolean => {
+      const window = windows.get(id);
+      return window?.maximized || false;
+    },
+    [windows]
+  );
 
-
-  const value: WindowManagerContextType = useMemo(() => ({
-    windows,
-    focusedWindowId,
-    registerWindow,
-    unregisterWindow,
-    closeWindow,
-    minimizeWindow,
-    restoreWindow,
-    maximizeWindow,
-    focusWindow,
-    getWindowZIndex,
-    isWindowFocused,
-    isWindowMinimized,
-    isWindowMaximized,
-  }), [windows, focusedWindowId, registerWindow, unregisterWindow, closeWindow, minimizeWindow, restoreWindow, maximizeWindow, focusWindow, getWindowZIndex, isWindowFocused, isWindowMinimized, isWindowMaximized]);
+  const value: WindowManagerContextType = useMemo(
+    () => ({
+      windows,
+      focusedWindowId,
+      registerWindow,
+      unregisterWindow,
+      closeWindow,
+      minimizeWindow,
+      restoreWindow,
+      maximizeWindow,
+      focusWindow,
+      getWindowZIndex,
+      isWindowFocused,
+      isWindowMinimized,
+      isWindowMaximized,
+    }),
+    [
+      windows,
+      focusedWindowId,
+      registerWindow,
+      unregisterWindow,
+      closeWindow,
+      minimizeWindow,
+      restoreWindow,
+      maximizeWindow,
+      focusWindow,
+      getWindowZIndex,
+      isWindowFocused,
+      isWindowMinimized,
+      isWindowMaximized,
+    ]
+  );
 
   return (
     <WindowManagerContext.Provider value={value}>
